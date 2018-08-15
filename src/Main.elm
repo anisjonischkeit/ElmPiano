@@ -5,7 +5,6 @@ port module Main exposing (..)
 
 import Html exposing (program, div, button, text, br)
 import Html.Events exposing (onMouseDown, onMouseUp, onMouseLeave)
-import Html.Attributes exposing (style)
 import Keyboard as Keyboard
 import Set exposing (Set)
 import Dict exposing (Dict)
@@ -152,39 +151,8 @@ update msg model =
 
 view : Model -> Html.Html Msg
 view model =
-  let 
-    handlers note octave = 
-      [ onMouseDown (PlayNote note octave)
-      , onMouseUp (StopNote note octave)
-      , onMouseLeave (StopNote note octave)
-      ]
-  in
   div []
-    [ div [ style [("padding-left", "15px")] ]
-      [ button (handlers CS 1) [ text "C1s" ]
-      , button (handlers DS 1) [ text "D1s" ]
-
-      -- spacer lol
-      , button [ style [("opacity", "0")] ] [ text "---" ]
-
-      , button (handlers FS 1) [ text "F1s" ]
-      , button (handlers GS 1) [ text "G1s" ]
-      , button (handlers AS 1) [ text "A1s" ]
-      ]
-    , div []
-      [ button (handlers C 1) [ text "C1-" ]
-      , button (handlers D 1) [ text "D1-" ]
-      , button (handlers E 1) [ text "E1-" ]
-      , button (handlers F 1) [ text "F1-" ]
-      , button (handlers G 1) [ text "G1-" ]
-      , button (handlers A 1) [ text "A1-" ]
-      , button (handlers B 1) [ text "B1-" ]
-      , button (handlers C 2) [ text "C2-" ]
-      ]
-    , br [] []
-    , div [] [ text (toString model)]
-
-    , Html.map PianoMsg 
+    [ Html.map PianoMsg 
       ( Piano.view 
         { notes = Set.fromList <| List.map toMidiNote (Dict.values model.pressedNotes)
         , noteRange = (0, 12)
@@ -193,6 +161,7 @@ view model =
         , debugNotes = False
         }
       )
+    , div [] [ text (toString model)]
     ]
 
 toMidiNote : ONote -> Int

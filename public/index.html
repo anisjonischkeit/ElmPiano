@@ -1,0 +1,19 @@
+<html>
+
+<body>
+  <div id="main"></div>
+  <script src="../build/main.js"></script>
+  <script>
+    var node = document.getElementById('main');
+    var app = Elm.Main.embed(node);
+
+    app.ports.playNote.subscribe(note => {
+      let snd = new Audio("./audio/" + note + ".wav");
+      snd.play()
+      // var suggestions = spellCheck(word);
+      //   app.ports.suggestions.send(suggestions);
+    });
+  </script>
+</body>
+
+</html>

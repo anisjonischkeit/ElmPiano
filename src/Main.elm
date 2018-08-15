@@ -139,6 +139,14 @@ update msg model =
           )
         Nothing -> (model, Cmd.none)
 
+    PianoMsg (Piano.KeyDown k) -> ( {model | pressedNotes = addPressedNote model.pressedNotes (fromMidiNote k)} 
+      , playNote (fromMidiNote k)
+      )
+
+    PianoMsg (Piano.KeyUp k) -> ( {model | pressedNotes = removePressedNote model.pressedNotes (fromMidiNote k)} 
+      , stopNote (fromMidiNote k)
+      )
+
     PianoMsg pmsg -> Debug.log (toString pmsg) (model, Cmd.none)
 -- VIEW
 
@@ -188,8 +196,45 @@ view model =
     ]
 
 toMidiNote : ONote -> Int
-toMidiNote oNote =
-  1
+toMidiNote {note, octave} =
+  (octave - 1) * 12
+    + case note of
+      C -> 0
+      CS -> 1
+      D -> 2
+      DS -> 3
+      E -> 4
+      F -> 5
+      FS -> 6
+      G -> 7
+      GS -> 8
+      A -> 9
+      AS -> 10
+      B -> 11
+
+fromMidiNote : Int -> ONote
+fromMidiNote midiNote =
+  let 
+    octave = 
+      floor (toFloat midiNote / 12)
+      |> (+) 1
+    relativeNote = rem midiNote 12
+  in
+    case relativeNote of
+      0 -> { note = C, octave = octave }
+      1 -> { note = CS, octave = octave }
+      2 -> { note = D, octave = octave }
+      3 -> { note = DS, octave = octave }
+      4 -> { note = E, octave = octave }
+      5 -> { note = F, octave = octave }
+      6 -> { note = FS, octave = octave }
+      7 -> { note = G, octave = octave }
+      8 -> { note = GS, octave = octave }
+      9 -> { note = A, octave = octave }
+      10 -> { note = AS, octave = octave }
+      11 -> { note = B, octave = octave }
+      _ -> { note = C, octave = octave }
+  
 
 
 -- SUBSCRIPTIONS

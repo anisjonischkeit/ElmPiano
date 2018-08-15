@@ -4,48 +4,26 @@ port module Main exposing (..)
 -- https://guide.elm-lang.org/architecture/user_input/buttons.html
 
 import Html exposing (program, div, button, text, br)
-import Html.Events exposing (onMouseDown, onMouseUp)
+import Html.Events exposing (onMouseDown, onMouseUp, onMouseLeave)
 import Html.Attributes exposing (style)
 import Keyboard as Keyboard
 import Set exposing (Set)
 
 main =
-  program { init = model, view = view, update = update, subscriptions=subscriptions }
+  program { init = init, view = view, update = update, subscriptions=subscriptions }
   
 
 -- MODEL
 
-type alias PressedNotes = Set ONote
-  -- { a: Bool
-  -- , s: Bool
-  -- , d: Bool
-  -- , f: Bool
-  -- , g: Bool
-  -- , h: Bool
-  -- , j: Bool
-  -- , w: Bool
-  -- , e: Bool
-  -- , t: Bool
-  -- , y: Bool
-  -- , u: Bool
-  -- }
+type alias PressedNotes = Set String
+  
 
-initialKeyStates = Set.empty
-  -- { a = False
-  -- , s = False
-  -- , d = False
-  -- , f = False
-  -- , g = False
-  -- , h = False
-  -- , j = False
-  -- , w = False
-  -- , e = False
-  -- , t = False
-  -- , y = False
-  -- , u = False
-  -- }
-
-model = (initialKeyStates, Cmd.none)
+init = 
+  ( { pressedNotes = Set.empty
+    , pressedKeys = Set.empty
+    }
+  , Cmd.none
+  )
 
 
 -- UPDATE
@@ -94,62 +72,51 @@ oNoteFromKey key =
 
 
 -- addPressedNote : ONote -> Set ONote -> Set ONote
--- addPressedNote oNote pressedNotes =
---   Set.insert oNote pressedNotes
+addPressedNote : PressedNotes -> ONote -> PressedNotes
+addPressedNote pressedNotes oNote =
+  Set.insert (toString oNote) pressedNotes
   
+removePressedNote : PressedNotes -> ONote -> PressedNotes
+removePressedNote pressedNotes oNote =
+  Set.remove (toString oNote) pressedNotes
 
 
--- updateKeyState : Int -> Bool -> PressedKeys -> PressedKeys
--- updateKeyState key value keyStates =
---   case key of
---     65 -> { keyStates | a = value }
---     83 -> { keyStates | s = value }
---     68 -> { keyStates | d = value }
---     70 -> { keyStates | f = value }
---     71 -> { keyStates | g = value }
---     72 -> { keyStates | h = value }
---     74 -> { keyStates | j = value }
-
---     87 -> { keyStates | w = value }
---     69 -> { keyStates | e = value }
---     84 -> { keyStates | t = value }
---     89 -> { keyStates | y = value }
---     85 -> { keyStates | u = value }
-    
---     _ -> keyStates
---     -- x -> Debug.log (toString x) Nothing
 
 update msg model =
-  let 
-    (newModel, cmd) = case msg of
-      PlayNote note octave ->
-        (model, playNote (ONote note octave))
-      
-      StopNote note octave ->
-        (model, stopNote (ONote note octave))
+  case msg of
+    PlayNote note octave ->
+      ( {model | pressedNotes = addPressedNote model.pressedNotes (ONote note octave)} 
+      , playNote (ONote note octave)
+      )
+    
+    StopNote note octave ->
+      ( {model | pressedNotes = removePressedNote model.pressedNotes (ONote note octave)}
+      , stopNote (ONote note octave)
+      )
 
-      _ -> (model, Cmd.none)
-      -- KeyDown key ->
-      --   ( case (oNoteFromKey key) of 
-      --     Just oNote -> addPressedNote oNote
-      --     Nothing -> model
-      --   , Cmd.none
-      --   )
-        -- , case (oNoteFromKey key) of 
-        --   Just oNote -> playNote oNote
-        --   Nothing -> Cmd.none
-        -- )
+    KeyDown key ->
+      case (oNoteFromKey key) of
+        Just oNote -> 
+          ( { model | 
+              pressedNotes = addPressedNote model.pressedNotes oNote,
+              pressedKeys = Set.insert key model.pressedKeys
+            }
+          , if Set.member key model.pressedKeys
+            then Cmd.none
+            else playNote oNote
+          )
+        Nothing -> (model, Cmd.none)
 
-      -- KeyUp key ->
-      --   ( updateKeyState key False model
-      --   , Cmd.none
-      --   )
-  in
-    (newModel, cmd)
-    -- newModel ! (
-    --   (List.map playNote
-    --     (Set.toList newModel)
-    --   ) ++ cmd)
+    KeyUp key ->
+      case (oNoteFromKey key) of
+        Just oNote -> 
+          ( { model | 
+              pressedNotes = removePressedNote model.pressedNotes oNote,
+              pressedKeys = Set.remove key model.pressedKeys
+            }
+          , stopNote oNote
+          )
+        Nothing -> (model, Cmd.none)
 -- VIEW
 
 view model =
@@ -157,6 +124,7 @@ view model =
     handlers note octave = 
       [ onMouseDown (PlayNote note octave)
       , onMouseUp (StopNote note octave)
+      , onMouseLeave (StopNote note octave)
       ]
   in
   div []
@@ -188,9 +156,6 @@ view model =
 
 -- SUBSCRIPTIONS
 
-
--- subscriptions : Model -> Sub Msg
--- subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch
     [ Keyboard.downs KeyDown

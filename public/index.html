@@ -7,7 +7,7 @@
     var node = document.getElementById('main');
     var app = Elm.Main.embed(node);
 
-    app.ports.playNote.subscribe(note => {
+    app.ports.playStringNote.subscribe(note => {
       let snd = new Audio("./audio/" + note + ".wav");
       snd.play()
       // var suggestions = spellCheck(word);

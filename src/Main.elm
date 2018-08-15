@@ -4,7 +4,6 @@ port module Main exposing (..)
 -- https://guide.elm-lang.org/architecture/user_input/buttons.html
 
 import Html exposing (program, div, button, text, br)
-import Html.Events exposing (onMouseDown, onMouseUp, onMouseLeave)
 import Keyboard as Keyboard
 import Set exposing (Set)
 import Dict exposing (Dict)
@@ -25,14 +24,6 @@ type alias PressedKeys = Set Int
 type alias Model = 
   { pressedNotes: PressedNotes
   , pressedKeys: PressedKeys
-  }
-
-type alias PianoModel = 
-  { notes : Set Int
-  , noteRange : (Int, Int)
-  , interactive : Bool
-  , showSizeSelector : Bool
-  , debugNotes : Bool
   }
 
 init : ( Model, Cmd msg )
@@ -63,9 +54,7 @@ type Note
 type alias ONote = { note: Note, octave: Int }
 
 type Msg 
-  = PlayNote Note Int 
-  | StopNote Note Int 
-  | KeyDown Int
+  = KeyDown Int
   | KeyUp Int
   | PianoMsg Piano.Msg
 
@@ -104,16 +93,6 @@ removePressedNote pressedNotes oNote =
 update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
   case msg of
-    PlayNote note octave ->
-      ( {model | pressedNotes = addPressedNote model.pressedNotes (ONote note octave)} 
-      , playNote (ONote note octave)
-      )
-    
-    StopNote note octave ->
-      ( {model | pressedNotes = removePressedNote model.pressedNotes (ONote note octave)}
-      , stopNote (ONote note octave)
-      )
-
     KeyDown key ->
       case (oNoteFromKey key) of
         Just oNote -> 
@@ -151,22 +130,24 @@ update msg model =
 
 view : Model -> Html.Html Msg
 view model =
-  div []
-    [ Html.map PianoMsg 
-      ( Piano.view 
-        { notes = Set.fromList <| List.map toMidiNote (Dict.values model.pressedNotes)
-        , noteRange = (0, 12)
-        , interactive = True
-        , showSizeSelector = False
-        , debugNotes = False
-        }
-      )
-    , div [] [ text (toString model)]
-    ]
+  let
+    pianoModel = 
+      { notes = Set.fromList <| List.map toMidiNote (Dict.values model.pressedNotes)
+      , noteRange = (0, 35)
+      , interactive = True
+      , showSizeSelector = False
+      , debugNotes = False
+      }
+  in
+    div []
+      [ Html.map PianoMsg 
+        ( Piano.view pianoModel )
+      , div [] [ text (toString model)]
+      ]
 
 toMidiNote : ONote -> Int
 toMidiNote {note, octave} =
-  (octave - 1) * 12
+  octave * 12
     + case note of
       C -> 0
       CS -> 1
@@ -184,9 +165,7 @@ toMidiNote {note, octave} =
 fromMidiNote : Int -> ONote
 fromMidiNote midiNote =
   let 
-    octave = 
-      floor (toFloat midiNote / 12)
-      |> (+) 1
+    octave = floor (toFloat midiNote / 12)
     relativeNote = rem midiNote 12
   in
     case relativeNote of

@@ -8,6 +8,7 @@ import Html.Events exposing (onMouseDown, onMouseUp, onMouseLeave)
 import Html.Attributes exposing (style)
 import Keyboard as Keyboard
 import Set exposing (Set)
+import Dict exposing (Dict)
 import Piano
 
 main : Program Never Model Msg
@@ -17,7 +18,7 @@ main =
 
 -- MODEL
 
-type alias PressedNotes = Set String
+type alias PressedNotes = Dict String ONote
 
 type alias PressedKeys = Set Int
 
@@ -37,7 +38,7 @@ type alias PianoModel =
 
 init : ( Model, Cmd msg )
 init = 
-  ( { pressedNotes = Set.empty
+  ( { pressedNotes = Dict.empty
     , pressedKeys = Set.empty
     }
   , Cmd.none
@@ -94,11 +95,11 @@ oNoteFromKey key =
 -- addPressedNote : ONote -> Set ONote -> Set ONote
 addPressedNote : PressedNotes -> ONote -> PressedNotes
 addPressedNote pressedNotes oNote =
-  Set.insert (toString oNote) pressedNotes
+  Dict.insert (toString oNote) oNote pressedNotes
   
 removePressedNote : PressedNotes -> ONote -> PressedNotes
 removePressedNote pressedNotes oNote =
-  Set.remove (toString oNote) pressedNotes
+  Dict.remove (toString oNote) pressedNotes
 
 
 update : Msg -> Model -> ( Model, Cmd msg )
@@ -177,7 +178,7 @@ view model =
 
     , Html.map PianoMsg 
       ( Piano.view 
-        { notes = Set.map toMidiNote model.pressedNotes
+        { notes = Set.fromList <| List.map toMidiNote (Dict.values model.pressedNotes)
         , noteRange = (0, 12)
         , interactive = True
         , showSizeSelector = False
@@ -186,7 +187,7 @@ view model =
       )
     ]
 
-toMidiNote : String -> Int
+toMidiNote : ONote -> Int
 toMidiNote oNote =
   1
 

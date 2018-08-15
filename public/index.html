@@ -6,14 +6,9 @@
   <script>
     var node = document.getElementById('main');
     var app = Elm.Main.embed(node);
-
-    app.ports.playStringNote.subscribe(note => {
-      let snd = new Audio("./audio/" + note + ".wav");
-      snd.play()
-      // var suggestions = spellCheck(word);
-      //   app.ports.suggestions.send(suggestions);
-    });
   </script>
+
+  <script src="./js/audio.js"></script>
 </body>
 
 </html>

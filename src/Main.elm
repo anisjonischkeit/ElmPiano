@@ -8,7 +8,9 @@ import Html.Events exposing (onMouseDown, onMouseUp, onMouseLeave)
 import Html.Attributes exposing (style)
 import Keyboard as Keyboard
 import Set exposing (Set)
+import Piano
 
+main : Program Never Model Msg
 main =
   program { init = init, view = view, update = update, subscriptions=subscriptions }
   
@@ -16,8 +18,24 @@ main =
 -- MODEL
 
 type alias PressedNotes = Set String
-  
 
+type alias PressedKeys = Set Int
+
+  
+type alias Model = 
+  { pressedNotes: PressedNotes
+  , pressedKeys: PressedKeys
+  }
+
+type alias PianoModel = 
+  { notes : Set Int
+  , noteRange : (Int, Int)
+  , interactive : Bool
+  , showSizeSelector : Bool
+  , debugNotes : Bool
+  }
+
+init : ( Model, Cmd msg )
 init = 
   ( { pressedNotes = Set.empty
     , pressedKeys = Set.empty
@@ -49,6 +67,7 @@ type Msg
   | StopNote Note Int 
   | KeyDown Int
   | KeyUp Int
+  | PianoMsg Piano.Msg
 
 
 oNoteFromKey : Int -> Maybe ONote
@@ -82,7 +101,7 @@ removePressedNote pressedNotes oNote =
   Set.remove (toString oNote) pressedNotes
 
 
-
+update : Msg -> Model -> ( Model, Cmd msg )
 update msg model =
   case msg of
     PlayNote note octave ->
@@ -118,8 +137,11 @@ update msg model =
           , stopNote oNote
           )
         Nothing -> (model, Cmd.none)
+
+    PianoMsg pmsg -> Debug.log (toString pmsg) (model, Cmd.none)
 -- VIEW
 
+view : Model -> Html.Html Msg
 view model =
   let 
     handlers note octave = 
@@ -152,12 +174,25 @@ view model =
       ]
     , br [] []
     , div [] [ text (toString model)]
+
+    , Html.map PianoMsg 
+      ( Piano.view 
+        { notes = Set.map toMidiNote model.pressedNotes
+        , noteRange = (0, 12)
+        , interactive = True
+        , showSizeSelector = False
+        , debugNotes = False
+        }
+      )
     ]
 
+toMidiNote : String -> Int
+toMidiNote oNote =
+  1
 
 
 -- SUBSCRIPTIONS
-
+subscriptions : Model -> Sub Msg
 subscriptions model =
   Sub.batch
     [ Keyboard.downs KeyDown

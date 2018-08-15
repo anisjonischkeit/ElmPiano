@@ -61,6 +61,7 @@ oNoteFromKey key =
     71 -> Just (ONote G 1)
     72 -> Just (ONote A 1)
     74 -> Just (ONote B 1)
+    75 -> Just (ONote C 2)
     
     87 -> Just (ONote CS 1)
     69 -> Just (ONote DS 1)
@@ -147,6 +148,7 @@ view model =
       , button (handlers G 1) [ text "G1-" ]
       , button (handlers A 1) [ text "A1-" ]
       , button (handlers B 1) [ text "B1-" ]
+      , button (handlers C 2) [ text "C2-" ]
       ]
     , br [] []
     , div [] [ text (toString model)]

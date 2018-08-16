@@ -7,7 +7,10 @@ import Html exposing (program, div, button, text, br)
 import Keyboard as Keyboard
 import Set exposing (Set)
 import Dict exposing (Dict)
+import List as List
+import Time
 import Piano
+import Task
 
 main : Program Never Model Msg
 main =
@@ -16,20 +19,26 @@ main =
 
 -- MODEL
 
-type alias PressedNotes = Dict String ONote
+type alias PressedNotes = Dict String (Time.Time, ONote)
 
 type alias PressedKeys = Set Int
 
-  
+type alias NoteHistoryItem = 
+  { startTime: Time.Time
+  , endTime: Time.Time
+  , oNote: ONote
+  }
 type alias Model = 
   { pressedNotes: PressedNotes
   , pressedKeys: PressedKeys
+  , noteHistory: List NoteHistoryItem
   }
 
 init : ( Model, Cmd msg )
 init = 
   ( { pressedNotes = Dict.empty
     , pressedKeys = Set.empty
+    , noteHistory = []
     }
   , Cmd.none
   )
@@ -57,6 +66,8 @@ type Msg
   = KeyDown Int
   | KeyUp Int
   | PianoMsg Piano.Msg
+  | SetPress Time.Time ONote
+  | StoreNote Time.Time ONote
 
 
 oNoteFromKey : Int -> Maybe ONote
@@ -81,58 +92,83 @@ oNoteFromKey key =
 
 
 -- addPressedNote : ONote -> Set ONote -> Set ONote
-addPressedNote : PressedNotes -> ONote -> PressedNotes
-addPressedNote pressedNotes oNote =
-  Dict.insert (toString oNote) oNote pressedNotes
+addPressedNote : PressedNotes -> Time.Time -> ONote -> PressedNotes
+addPressedNote pressedNotes time oNote =
+  Dict.insert (toString oNote) (time, oNote) pressedNotes
   
 removePressedNote : PressedNotes -> ONote -> PressedNotes
 removePressedNote pressedNotes oNote =
   Dict.remove (toString oNote) pressedNotes
 
-
-update : Msg -> Model -> ( Model, Cmd msg )
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
   case msg of
     KeyDown key ->
       case (oNoteFromKey key) of
         Just oNote -> 
-          ( { model | 
-              pressedNotes = addPressedNote model.pressedNotes oNote,
-              pressedKeys = Set.insert key model.pressedKeys
-            }
+          ( { model | pressedKeys = Set.insert key model.pressedKeys }
           , if Set.member key model.pressedKeys
-            then Cmd.none
-            else playNote oNote
+            then Cmd.none 
+            else Cmd.batch 
+              [ playNote oNote
+              , Task.perform (flip SetPress oNote) Time.now
+              ]
           )
         Nothing -> (model, Cmd.none)
 
     KeyUp key ->
       case (oNoteFromKey key) of
         Just oNote -> 
-          ( { model | 
-              pressedNotes = removePressedNote model.pressedNotes oNote,
-              pressedKeys = Set.remove key model.pressedKeys
-            }
-          , stopNote oNote
+          ( { model | pressedKeys = Set.remove key model.pressedKeys }
+          , Cmd.batch
+            [ stopNote oNote
+            , Task.perform (flip StoreNote oNote) Time.now
+            ]
           )
         Nothing -> (model, Cmd.none)
 
-    PianoMsg (Piano.KeyDown k) -> ( {model | pressedNotes = addPressedNote model.pressedNotes (fromMidiNote k)} 
-      , playNote (fromMidiNote k)
+    PianoMsg (Piano.KeyDown k) ->
+      let oNote = (fromMidiNote k) in
+      ( model
+      , Cmd.batch 
+        [ playNote oNote
+        , Task.perform (flip SetPress oNote) Time.now
+        ]
       )
 
-    PianoMsg (Piano.KeyUp k) -> ( {model | pressedNotes = removePressedNote model.pressedNotes (fromMidiNote k)} 
-      , stopNote (fromMidiNote k)
+    PianoMsg (Piano.KeyUp k) ->
+      let oNote = (fromMidiNote k) in
+      ( model
+      , Cmd.batch
+        [ stopNote (fromMidiNote k)
+        , Task.perform (flip StoreNote oNote) Time.now
+        ]
       )
 
     PianoMsg pmsg -> Debug.log (toString pmsg) (model, Cmd.none)
+
+    SetPress time oNote ->
+      ( { model | pressedNotes = addPressedNote model.pressedNotes time oNote } --noteHistory = (time, oNote) :: model.noteHistory } 
+      , Cmd.none
+      )
+
+    StoreNote endTime oNote -> Debug.log (toString model.pressedNotes)
+      ( { model | pressedNotes = removePressedNote model.pressedNotes oNote,
+          noteHistory = 
+            case Dict.get (toString oNote) model.pressedNotes of
+              Just (startTime, oNote) -> {startTime=startTime, endTime=endTime, oNote=oNote} :: model.noteHistory
+              Nothing -> model.noteHistory
+            
+        } 
+      , Cmd.none
+      )
 -- VIEW
 
 view : Model -> Html.Html Msg
 view model =
   let
     pianoModel = 
-      { notes = Set.fromList <| List.map toMidiNote (Dict.values model.pressedNotes)
+      { notes = Set.fromList <| List.map (toMidiNote << Tuple.second) (Dict.values model.pressedNotes)
       , noteRange = (0, 35)
       , interactive = True
       , showSizeSelector = False

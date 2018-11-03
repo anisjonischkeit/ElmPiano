@@ -1,6 +1,6 @@
 # Elm Piano
 
-A Piano implemented in Elm
+A Piano that you can play using the computer keyboard, implemented in Elm.
 
 ## building
 
